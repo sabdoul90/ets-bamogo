@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  backend-bamogo-app:
+    build: .
+    container_name: backend-bamogo-app
+    restart: always
+    env_file: .env
+    ports:
+      - "1984:1984"
+    volumes:
+      - .:/backend-bamogo-app
+      - uploads_data:/backend-bamogo-app/uploads
+    networks:
+      - back_backend-app-gestion-net
+
+volumes:
+  uploads_data:
+
+networks:
+  back_backend-app-gestion-net:
+    external: true
