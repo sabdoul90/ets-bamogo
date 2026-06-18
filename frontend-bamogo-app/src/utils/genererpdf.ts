@@ -216,7 +216,7 @@ export const genererPDF = async (
     doc.text("Le client", pageWidth - 50, finalY + 30);
 
     doc.setFont("helvetica", "bold");
-    doc.text("BAMOGO Mohamdi", 14, finalY + 36);
+    doc.text("BAMOGO Mohamadi", 14, finalY + 36);
 
     // =========================
     // EXPORT

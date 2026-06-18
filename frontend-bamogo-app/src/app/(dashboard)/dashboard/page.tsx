@@ -9,6 +9,7 @@ import VenteModal from "@/components/dashboard/faireuneventemodal";
 import AjouterProduitModal from "@/components/dashboard/ajouterproduit";
 import { Stat } from "@/type/stat.type";
 import { statsService } from "@/services/stats.service";
+import { useRouter } from "next/navigation";
 
 const MotionLink = motion.create(Link);
 
@@ -16,6 +17,10 @@ type Tab = "ventes" | "ruptures";
 
 
 export default function DashboardPage() {
+
+    const [isMobile, setIsMobile] = useState(false);
+    const router = useRouter();
+
 
     const [activeTab, setActiveTab] = useState<Tab>("ventes");
     const [isSticky, setIsSticky] = useState(false);
@@ -27,27 +32,36 @@ export default function DashboardPage() {
 
 
     const recupStats = useCallback(async () => {
-    
-            const requete = await statsService.get();
-            console.log("Stats requete");
-            console.log(requete.data.data);
-            console.log(requete.status);
-    
-    
-    
-            if (requete.status === 200) {
-                setStats(requete.data.data);
-            }
-        }, []);
-    
-        useEffect(() => {
-            recupStats();
-        }, [recupStats]);
+
+        const requete = await statsService.get();
+        console.log("Stats requete");
+        console.log(requete.data.data);
+        console.log(requete.status);
+
+
+
+        if (requete.status === 200) {
+            setStats(requete.data.data);
+        }
+    }, []);
+
+    useEffect(() => {
+        recupStats();
+    }, [recupStats]);
 
 
 
 
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 640);
+
+        check();
+        window.addEventListener("resize", check);
+
+        return () => window.removeEventListener("resize", check);
+    }, []);
 
     useEffect(() => {
 
@@ -84,20 +98,20 @@ export default function DashboardPage() {
                 className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12 w-full"
             >
 
-                { stats.length > 0 ?
+                {stats.length > 0 ?
                     stats.map((stat, index) => (
                         <StatsCard
                             key={index}
                             nom={stat.nom}
                             valeur={stat.valeur}
                         />
-                    )) : 
+                    )) :
                     <><StatsCard nom="Produits" valeur={0} />
-                    <StatsCard nom="Clients" valeur={0} />
-                    <StatsCard nom="Ventes" valeur={0} />
+                        <StatsCard nom="Clients" valeur={0} />
+                        <StatsCard nom="Ventes" valeur={0} />
                     </>
                 }
-                
+
             </motion.div>
 
             <motion.div
@@ -108,14 +122,24 @@ export default function DashboardPage() {
                 </h2>
 
                 <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12 w-full mb-5">
-                    <motion.button
-                        onClick={() => setOpen(true)}
+                    {isMobile ? (<motion.button
+                        onClick={() => router.push("/ventes/ajouter")}
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.97 }}
                         className="texte-normal-meduim px-8 py-2 border border-(--bordure-color) rounded-3xl hover:bg-(--bordure-color)"
                     >
                         Faire une vente
-                    </motion.button>
+                    </motion.button>) :
+                        (<motion.button
+                            onClick={() => setOpen(true)}
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.97 }}
+                            className="texte-normal-meduim px-8 py-2 border border-(--bordure-color) rounded-3xl hover:bg-(--bordure-color)"
+                        >
+                            Faire une vente
+                        </motion.button>)
+
+                    }
 
                     <motion.button
                         onClick={() => setOpenAjouterProduit(true)}
@@ -193,7 +217,7 @@ export default function DashboardPage() {
             />
             <AjouterProduitModal
                 isOpen={openAjouterProduit}
-                onClose={() => {setOpenAjouterProduit(false);}}
+                onClose={() => { setOpenAjouterProduit(false); }}
             />
 
         </div>

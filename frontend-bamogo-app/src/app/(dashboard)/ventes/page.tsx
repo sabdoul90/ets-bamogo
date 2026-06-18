@@ -10,6 +10,7 @@ import { Vente } from "@/type/vente.type";
 import VenteModal from "@/components/dashboard/faireuneventemodal";
 import SupprimerVenteModal from "@/components/ventes/supprimer";
 import EditerVenteModal from "@/components/ventes/editer";
+import { useRouter } from "next/navigation";
 
 
 
@@ -17,6 +18,7 @@ const MotionLink = motion.create(Link);
 
 export default function VentesPage() {
 
+    const [isMobile, setIsMobile] = useState(false);
     const [ventes, setVentes] = useState<Vente[]>([]);
     const [openAjouteVente, setOpenAjouteVente] = useState(false);
     const [openSupprimerVente, setOpenSupprimerVente] = useState(false);
@@ -25,13 +27,15 @@ export default function VentesPage() {
     const [page, setPage] = useState<number>(1);
     const [limit, setLimit] = useState<number>(1);
     const [search, setSearch] = useState("");
+    const router = useRouter();
 
     const recupVente = useCallback(async (page: number) => {
 
+
         const requete = await venteService.getAll(page, "client,media");
-        console.log("vente requete");
+        /*console.log("vente requete");
         console.log(requete.data.data);
-        console.log(requete.status);
+        console.log(requete.status);*/
 
 
 
@@ -45,23 +49,41 @@ export default function VentesPage() {
         p.client?.nom_prenom.toLowerCase().includes(search.toLowerCase()) || p.client?.telephone.toLowerCase().includes(search.toLowerCase())
     );
 
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 640);
+
+        check();
+        window.addEventListener("resize", check);
+
+        return () => window.removeEventListener("resize", check);
+    }, []);
+
 
     useEffect(() => {
         recupVente(page);
     }, [recupVente, page]);
 
     return (
-        <div className="p-4 md:p-6">
+        <div className="p-4">
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                 <h1 className="titre-section-meduim text-(--texte-principal)">Les ventes</h1>
 
                 <div className="flex gap-2">
-                    <button
-                        onClick={() => setOpenAjouteVente(true)}
-                        className="bg-(--primary) text-(--blanc) px-4 py-2 rounded-full texte-normal-semi-bold hover:bg-(--btn-primaire-focus) transition-colors">
-                        Faire une vente
-                    </button>
+                    {isMobile ? (
+                        <button
+                            onClick={() => router.push("/ventes/ajouter")}
+                            className="bg-(--primary) text-(--blanc) px-4 py-2 rounded-full texte-normal-semi-bold hover:bg-(--btn-primaire-focus) transition-colors">
+                            Faire une vente
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => setOpenAjouteVente(true)}
+                            className="bg-(--primary) text-(--blanc) px-4 py-2 rounded-full texte-normal-semi-bold hover:bg-(--btn-primaire-focus) transition-colors">
+                            Faire une vente
+                        </button>
+                    )}
+
                 </div>
             </div>
 
@@ -222,13 +244,15 @@ export default function VentesPage() {
                     ventes.map((v) => (
                         <div key={v.id} className="border border-(--bordure-color) hover:bg-(--bordure-color) rounded-xl p-3">
                             <div className="flex justify-between mb-2">
-                                <span className="texte-normal-semi-bold ">{v.client?.nom_prenom}</span>
-                                <span className="texte-normal-regular text-(--gris)">{formaterDate(v.createdAt)} - {formaterHeure(v.createdAt)}</span>
+                                <div className="texte-normal-meduim flex flex-col text-(--texte-principal)">
+                                    <span className="texte-normal-semi-bold ">{v.client?.nom_prenom}</span>
+                                    <span className="texte-normal-semi-bold ">{v.client?.telephone}</span>
+                                </div>
+                                <span className="texte-normal-regular text-(--gris-facture)">{formaterDate(v.createdAt)} - {formaterHeure(v.createdAt)}</span>
                             </div>
 
-                            <div className="texte-normal-regular text-(--gris)">
-                                <p>Montant: {Number(v.montant).toLocaleString("fr-FR")}</p>
-                                <p>Numero: {v.client?.telephone}</p>
+                            <div className="texte-normal-bold text-(--texte-principal)">
+                                <p>Montant: {Number(v.montant).toLocaleString("fr-FR")} FCFA</p>
                             </div>
 
                             <div className="flex gap-2 mt-3">
@@ -251,8 +275,11 @@ export default function VentesPage() {
                                 </motion.button>
 
                                 <motion.button
-                                    onClick={() => { }}
+                                    onClick={() => {
+                                        router.push(`/ventes/editer?id=${v.id}`);
+                                    }}
                                     whileHover={{ scale: 1.1 }}
+
                                     whileTap={{ scale: 0.9 }}
                                     className="bg-(--primary) hover:bg-(--btn-primaire-focus) w-9 h-9 rounded-full flex items-center justify-center"
                                 >
@@ -302,4 +329,3 @@ export default function VentesPage() {
         </div>
     );
 }
-

@@ -174,10 +174,6 @@ export default function AjouterProduitModal({ isOpen, onClose }: Props) {
                     </button>
                 </div>
             </form>
-
-
-
-
         </Modal>
     );
 }

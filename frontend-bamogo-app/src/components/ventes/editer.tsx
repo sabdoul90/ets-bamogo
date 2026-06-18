@@ -25,6 +25,7 @@ interface Props {
 }
 
 export default function EditerVenteModal({ id, isOpen, onClose }: Props) {
+    const loadingVenteRef = useRef(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const inputRefClient = useRef<HTMLInputElement>(null);
     const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -214,7 +215,7 @@ export default function EditerVenteModal({ id, isOpen, onClose }: Props) {
                 nouveauClient = client;
             }
 
-            console.log('Selection : ',selection);
+            console.log('Selection : ', selection);
 
             // Generate new PDF
             const pdf = await genererPDF(nouveauClient!, selection, total);
@@ -309,30 +310,111 @@ export default function EditerVenteModal({ id, isOpen, onClose }: Props) {
         }
     }, []);
 
+
     const recupVente = useCallback(async () => {
+
+        if (loadingVenteRef.current) return;
+
+        loadingVenteRef.current = true;
+
         setIsLoadingData(true);
-        const requete = await venteService.getById(id, 'client,etablissement,media,produits');
-        console.log("Requete vente : ", requete);
-        if (requete.status === 200) {
-            const venteData = requete.data.data;
-            console.log("Vente data dans editer : ", venteData);
-            setVente(venteData);
-            setClient(venteData.client || null);
-            setNomPrenom(venteData.client?.nom_prenom || "");
-            setTelephone(venteData.client?.telephone || "");
-            setQueryClient(venteData.client?.nom_prenom || "");
-            // Convert vendus to selection format
-            const selectionData: VenteProduit[] = venteData.vendus?.map((vp: VenteProduit) => ({
-                id: vp.id,
-                quantite: vp.quantite,
-                cout_unitaire: vp.cout_unitaire,
-                produit: vp.produit,
-            })) || [];
-            setSelection(selectionData);
-        } else {
-            setError("Erreur lors du chargement de la vente");
+
+        try {
+
+            const requete = await venteService.getById(
+                id,
+                'client,etablissement,media,produits'
+            );
+
+            if (requete.status === 200) {
+
+                const venteData = requete.data.data;
+
+                console.log("Vente data dans editer : ", venteData);
+
+                setVente(venteData);
+
+                setClient(venteData.client || null);
+
+                setNomPrenom(
+                    venteData.client?.nom_prenom || ""
+                );
+
+                setTelephone(
+                    venteData.client?.telephone || ""
+                );
+
+                setQueryClient(
+                    venteData.client?.nom_prenom || ""
+                );
+
+                /*
+                    IMPORTANT :
+                    Dédoublonnage des produits
+                */
+
+                const vendusUniques = (
+                    venteData.vendus || []
+                ).filter(
+                    (
+                        vp: VenteProduit,
+                        index: number,
+                        self: VenteProduit[]
+                    ) =>
+                        index ===
+                        self.findIndex(
+                            (v) =>
+                                v.produit?.id === vp.produit?.id
+                        )
+                );
+
+                const selectionData: VenteProduit[] =
+                    vendusUniques.map(
+                        (vp: VenteProduit) => ({
+                            id: vp.id,
+                            quantite: vp.quantite,
+                            cout_unitaire: vp.cout_unitaire,
+                            produit: vp.produit,
+                        })
+                    );
+
+                /*
+                    reset avant injection
+                */
+
+                setSelection([]);
+
+                requestAnimationFrame(() => {
+                    setSelection(selectionData);
+                });
+
+            } else {
+
+                setError(
+                    "Erreur lors du chargement de la vente"
+                );
+
+            }
+
+        } catch (err) {
+
+            console.log(
+                "Erreur chargement vente : ",
+                err
+            );
+
+            setError(
+                "Erreur lors du chargement de la vente"
+            );
+
+        } finally {
+
+            setIsLoadingData(false);
+
+            loadingVenteRef.current = false;
+
         }
-        setIsLoadingData(false);
+
     }, [id]);
 
     useEffect(() => {
@@ -352,7 +434,7 @@ export default function EditerVenteModal({ id, isOpen, onClose }: Props) {
 
         recupClient(pageClient);
     }, [isOpen, pageClient, recupClient]);
-    
+
 
     if (isLoadingData) {
         return (
@@ -516,46 +598,82 @@ export default function EditerVenteModal({ id, isOpen, onClose }: Props) {
                 </div>
             </div>
 
-            <div className="border border-(--bordure-color) rounded-xl mb-4">
-                {selection.map((p, index) => (
-                    <div
-                        key={p.id}
-                        className={`
-        flex justify-between items-center p-3
-        border-b border-(--bordure-color) last:border-b-0
-        first:rounded-t-xl last:rounded-b-xl
-      `}
-                    >
-                        <span>{p.produit?.nom}</span>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <label className="texte-normal-regular font-medium">Prix:</label>
+            <div className="border border-(--bordure-color) rounded-xl mb-4 overflow-hidden">
+                {selection.map((p, index) => {
+                    const numero = selection.length - index;
+
+                    return (
+                        <div
+                            key={p.id}
+                            className="
+                    grid grid-cols-12 
+                    items-center gap-4 
+                    p-3
+                    border-b border-(--bordure-color)
+                    last:border-b-0
+                "
+                        >
+                            {/* Numéro (grand au premier élément) */}
+                            <div className="col-span-1">
+                                {numero}.
+                            </div>
+
+                            {/* Nom produit */}
+                            <div className="col-span-3 font-medium">
+                                {p.produit?.nom}
+                            </div>
+
+                            {/* Prix */}
+                            <div className="col-span-4 flex items-center gap-2">
+                                <label className="texte-normal-regular font-medium">
+                                    Prix:
+                                </label>
                                 <input
                                     type="number"
                                     value={p.cout_unitaire ?? 0}
                                     onChange={(e) =>
                                         updatePrixUnitaire(p.id, Number(e.target.value))
                                     }
-                                    className="w-24 rounded px-2 py-1 texte-normal-regular border border-(--bordure-color)  outline-none focus:ring-1 focus:ring-(--primary)"
+                                    className="w-full rounded px-2 py-1
+                        border border-(--bordure-color)
+                        outline-none focus:ring-1 focus:ring-(--primary)"
                                 />
                             </div>
-                            <div className="flex items-center gap-2">
-                                <label className="texte-normal-regular font-medium">Quantité:</label>
+
+                            {/* Quantité */}
+                            <div className="col-span-3 flex items-center gap-2">
+                                <label className="texte-normal-regular font-medium">
+                                    Quantité:
+                                </label>
                                 <input
                                     type="number"
                                     value={p.quantite ?? 0}
                                     onChange={(e) =>
                                         updateQty(p.id, Number(e.target.value))
                                     }
-                                    className="w-16 rounded px-2 py-1 texte-normal-regular border border-(--bordure-color)   outline-none focus:ring-1 focus:ring-(--primary)"
+                                    className="w-full rounded px-2 py-1
+                        border border-(--bordure-color)
+                        outline-none focus:ring-1 focus:ring-(--primary)"
                                 />
                             </div>
+
+                            {/* Supprimer */}
+                            <div className="col-span-1 flex justify-end">
+                                <button
+                                    className="
+                            rounded-full hover:text-(--secondary)
+                            flex items-center justify-center
+                            w-8 h-8 border border-(--bordure-color)
+                            hover:border-(--secondary)
+                        "
+                                    onClick={() => removeProduit(p.id)}
+                                >
+                                    <X size={22} />
+                                </button>
+                            </div>
                         </div>
-                        <button className="rounded-full hover:text-(--secondary) flex items-center justify-center w-8 h-8 border border-(--bordure-color) hover:border-(--secondary)" onClick={() => removeProduit(p.id)}>
-                            <X size={22} />
-                        </button>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {error && (
